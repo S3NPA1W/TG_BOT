@@ -154,7 +154,7 @@ async def answer_ticket(callback: CallbackQuery, state: FSMContext):
     await state.set_state(TicketFormState.id)
     await callback.message.answer('Введите ответ:')
 
-@router.message(TicketFormState.id)
+@router.message(TicketFormState.answering)
 async def send_ticket_answer(message: Message, bot: Bot):
     ticket_id = 1  # Здесь должна быть логика получения ID тикета
     await rq.update_ticket_status(ticket_id)
