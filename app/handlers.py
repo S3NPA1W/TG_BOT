@@ -5,8 +5,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram import F, Router, Bot
 from app.database import requests as rq
 from app import keyboards as kb
+from os import getenv
 
 router = Router()
+
+# Получаем список администраторов
+def get_admins():
+    admins = getenv('ADMIN_ID', '').split(',')
+    return [int(admin.strip()) for admin in admins if admin.strip().isdigit()]
 
 class SupportStates(StatesGroup):
     fio = State()
@@ -22,8 +28,6 @@ class TicketFormState(StatesGroup):
 
 class OrderAnswerState(StatesGroup):
     answering = State()
-
-admin_ids = [1827788673, 2117456510]
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -83,7 +87,7 @@ async def confirm_order(callback: CallbackQuery, bot: Bot, state: FSMContext):
         caption='Оплата по QR-коду...',
         reply_markup=kb.buy_complete
     )
-    for admin_id in admin_ids:
+    for admin_id in get_admins():
         await bot.send_message(admin_id, 'Новый заказ!')
     await state.clear()
 
@@ -107,13 +111,13 @@ async def create_ticket(message: Message, state: FSMContext, bot: Bot):
         question=message.text
     )
     await message.answer('Ваш вопрос принят!')
-    for admin_id in admin_ids:
+    for admin_id in get_admins():
         await bot.send_message(admin_id, f'Новый тикет от {data["fio"]}')
     await state.clear()
 
 @router.message(Command('tickets'))
 async def admin_tickets(message: Message):
-    if message.from_user.id in admin_ids:
+    if message.from_user.id in get_admins():
         await message.answer('Тикеты:', reply_markup=await kb.admin_support())
 
 @router.callback_query(F.data.startswith('ticket_'))
@@ -137,32 +141,19 @@ async def send_ticket_answer(message: Message, state: FSMContext, bot: Bot):
     ticket_id = data['ticket_id']
     user_id = data['user_id']
     
-    # Отправляем ответ пользователю
     await bot.send_message(
         user_id,
         f"Ответ на ваш тикет #{ticket_id}:\n{message.text}"
     )
     
-    # Обновляем статус тикета
     await rq.update_ticket_status(ticket_id)
     
     await message.answer('Ответ отправлен пользователю!')
     await state.clear()
 
-@router.callback_query(F.data == 'answer_tick')
-async def answer_ticket(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(TicketFormState.id)
-    await callback.message.answer('Введите ответ:')
-
-@router.message(TicketFormState.answering)
-async def send_ticket_answer(message: Message, bot: Bot):
-    ticket_id = 1  # Здесь должна быть логика получения ID тикета
-    await rq.update_ticket_status(ticket_id)
-    await message.answer('Ответ отправлен!')
-
 @router.message(Command('orders'))
 async def admin_orders(message: Message):
-    if message.from_user.id in admin_ids:
+    if message.from_user.id in get_admins():
         await message.answer('Заказы:', reply_markup=await kb.worker_panel())
 
 @router.callback_query(F.data.startswith('order_'))
