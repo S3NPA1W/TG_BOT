@@ -18,7 +18,7 @@ class BuyerStates(StatesGroup):
     variant = State()
 
 class TicketFormState(StatesGroup):
-    id = State()
+    answering = State()
 
 class OrderAnswerState(StatesGroup):
     answering = State()
@@ -117,13 +117,37 @@ async def admin_tickets(message: Message):
         await message.answer('Тикеты:', reply_markup=await kb.admin_support())
 
 @router.callback_query(F.data.startswith('ticket_'))
-async def view_ticket(callback: CallbackQuery):
+async def view_ticket(callback: CallbackQuery, state: FSMContext):
     ticket_id = int(callback.data.split('_')[1])
     ticket = await rq.get_ticket_info(ticket_id)
+    await state.update_data(ticket_id=ticket_id, user_id=ticket.tg_id)
     await callback.message.edit_text(
         f'Тикет #{ticket_id}\nОт: {ticket.fio}\nВопрос: {ticket.description}',
         reply_markup=kb.ticket_red
     )
+
+@router.callback_query(F.data == 'answer_tick')
+async def answer_ticket(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(TicketFormState.answering)
+    await callback.message.answer('Введите ответ на тикет:')
+
+@router.message(TicketFormState.answering)
+async def send_ticket_answer(message: Message, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    ticket_id = data['ticket_id']
+    user_id = data['user_id']
+    
+    # Отправляем ответ пользователю
+    await bot.send_message(
+        user_id,
+        f"Ответ на ваш тикет #{ticket_id}:\n{message.text}"
+    )
+    
+    # Обновляем статус тикета
+    await rq.update_ticket_status(ticket_id)
+    
+    await message.answer('Ответ отправлен пользователю!')
+    await state.clear()
 
 @router.callback_query(F.data == 'answer_tick')
 async def answer_ticket(callback: CallbackQuery, state: FSMContext):
