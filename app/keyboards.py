@@ -1,3 +1,6 @@
+# ========================
+# ИМПОРТЫ
+# ========================
 from aiogram.types import (
     ReplyKeyboardMarkup, 
     KeyboardButton,
@@ -7,12 +10,15 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.database.requests import (
     get_categories, 
-    get_category_item,
+    get_category_items,
     get_tickets,
     get_orders,
     get_category
 )
 
+# ========================
+# ОСНОВНЫЕ КЛАВИАТУРЫ
+# ========================
 main = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text='Каталог')],
@@ -56,7 +62,11 @@ order_red = InlineKeyboardMarkup(
     ]
 )
 
+# ========================
+# ДИНАМИЧЕСКИЕ КЛАВИАТУРЫ
+# ========================
 async def categories():
+    """Клавиатура с категориями товаров"""
     all_categories = await get_categories()
     keyboard = InlineKeyboardBuilder()
     for category in all_categories:
@@ -71,7 +81,8 @@ async def categories():
     return keyboard.adjust(2).as_markup()
 
 async def items(category_id: int):
-    all_items = await get_category_item(category_id)
+    """Клавиатура с товарами в категории"""
+    all_items = await get_category_items(category_id)
     keyboard = InlineKeyboardBuilder()
     for item in all_items:
         keyboard.add(InlineKeyboardButton(
@@ -85,6 +96,7 @@ async def items(category_id: int):
     return keyboard.adjust(2).as_markup()
 
 async def admin_support():
+    """Клавиатура с тикетами для админа"""
     all_tickets = await get_tickets()
     keyboard = InlineKeyboardBuilder()
     for ticket in all_tickets:
@@ -99,10 +111,11 @@ async def admin_support():
     return keyboard.adjust(1).as_markup()
 
 async def worker_panel():
+    """Клавиатура с заказами для админа"""
     all_orders = await get_orders()
     keyboard = InlineKeyboardBuilder()
     for order in all_orders:
-        category = await get_category(order.category)
+        category = await get_category(order.category_id)
         keyboard.add(InlineKeyboardButton(
             text=f"Заказ #{order.id} - {category.name}",
             callback_data=f"order_{order.id}"

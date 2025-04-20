@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "91.233.173.91",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "Server",
+            "database": "selectel",
+            "username": "selectel",
+            "password": "selectel"
+        }
+    ]
+}
